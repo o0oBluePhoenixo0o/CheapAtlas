@@ -1,0 +1,6 @@
+context_path: cheapatlas.run.ProjectContext
+project_name: "CheapAtlas"
+project_version: "0.16.6"
+package_name: "cheapatlas"
+hooks:
+  - cheapatlas.hooks.project_hooks

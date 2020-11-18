@@ -123,3 +123,8 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Ignore folders
+data/
+R_codes/
+conf/local/

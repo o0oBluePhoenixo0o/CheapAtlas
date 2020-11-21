@@ -3,3 +3,58 @@
 #
 # Documentation for this file format can be found in "Parameters"
 # Link: https://kedro.readthedocs.io/en/stable/04_kedro_project_setup/02_configuration.html#parameters
+
+
+
+# geofabrik OSM data dump, updated daily
+geofabrik:
+  output_path: data/01_raw/geofabrik/
+  BY:
+    download_url: [
+        'http://download.geofabrik.de/europe/germany/bayern/oberbayern-latest.osm.pbf',
+        'http://download.geofabrik.de/europe/germany/bayern/mittelfranken-latest.osm.pbf',
+        'http://download.geofabrik.de/europe/germany/bayern/niederbayern-latest.osm.pbf',
+        'http://download.geofabrik.de/europe/germany/bayern/oberfranken-latest.osm.pbf',
+        'http://download.geofabrik.de/europe/germany/bayern/oberpfalz-latest.osm.pbf',
+        'http://download.geofabrik.de/europe/germany/bayern/schwaben-latest.osm.pbf',
+        'http://download.geofabrik.de/europe/germany/bayern/unterfranken-latest.osm.pbf'
+    ]
+  BW:
+    download_url: [
+        'http://download.geofabrik.de/europe/germany/baden-wuerttemberg/freiburg-regbez-latest.osm.pbf',
+        'http://download.geofabrik.de/europe/germany/baden-wuerttemberg/karlsruhe-regbez-latest.osm.pbf',
+        'http://download.geofabrik.de/europe/germany/baden-wuerttemberg/stuttgart-regbez-latest.osm.pbf',
+        'http://download.geofabrik.de/europe/germany/baden-wuerttemberg/tuebingen-regbez-latest.osm.pbf'
+  ]
+  BE_BB:
+    download_url: ['http://download.geofabrik.de/europe/germany/brandenburg-latest.osm.pbf']
+  HB:
+    download_url: ['http://download.geofabrik.de/europe/germany/bremen-latest.osm.pbf']
+  HH:
+    download_url: ['http://download.geofabrik.de/europe/germany/hamburg-latest.osm.pbf']
+  HE:
+    download_url: ['http://download.geofabrik.de/europe/germany/hessen-latest.osm.pbf']
+  MV:
+    download_url: ['http://download.geofabrik.de/europe/germany/mecklenburg-vorpommern-latest.osm.pbf']
+  NI:
+    download_url: ['http://download.geofabrik.de/europe/germany/niedersachsen-latest.osm.pbf']
+  NW:
+    download_url: [
+        'http://download.geofabrik.de/europe/germany/nordrhein-westfalen/arnsberg-regbez-latest.osm.pbf',
+        'http://download.geofabrik.de/europe/germany/nordrhein-westfalen/detmold-regbez-latest.osm.pbf',
+        'http://download.geofabrik.de/europe/germany/nordrhein-westfalen/duesseldorf-regbez-latest.osm.pbf',
+        'http://download.geofabrik.de/europe/germany/nordrhein-westfalen/koeln-regbez-latest.osm.pbf',
+        'http://download.geofabrik.de/europe/germany/nordrhein-westfalen/muenster-regbez-latest.osm.pbf'
+    ]
+  RP:
+    download_url: ['http://download.geofabrik.de/europe/germany/rheinland-pfalz-latest.osm.pbf']
+  SL:
+    download_url: ['http://download.geofabrik.de/europe/germany/saarland-latest.osm.pbf']
+  SN:
+    download_url: ['http://download.geofabrik.de/europe/germany/sachsen-latest.osm.pbf']
+  ST:
+    download_url: ['http://download.geofabrik.de/europe/germany/sachsen-anhalt-latest.osm.pbf']
+  SH:
+    download_url: ['http://download.geofabrik.de/europe/germany/schleswig-holstein-latest.osm.pbf']
+  TH:
+    download_url: ['http://download.geofabrik.de/europe/germany/thueringen-latest.osm.pbf']

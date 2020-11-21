@@ -32,7 +32,23 @@ generated using Kedro 0.16.6
 """
 
 from kedro.pipeline import Pipeline, node
-
+from src.cheapatlas.pipelines.data_acquisition.nodes import *
 
 def create_pipeline(**kwargs):
-    return Pipeline([])
+    return Pipeline(
+        [
+            node(
+                func=get_data,
+                inputs=['raw_plz_pop',
+                        'params:buildings_plz_path'],
+                outputs=None,
+                name='get_data'
+            ),
+            node(
+                func=download_url,
+                inputs=['params:state_list',
+                        'params:geofabrik'],
+                outputs=None,
+                name='get_geofabrik_data'
+            )
+    ])

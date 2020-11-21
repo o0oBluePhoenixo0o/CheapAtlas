@@ -1,1 +1,21 @@
+# location to store building objects per postal code
+buildings_plz_path: data/01_raw/buildings_plz
 
+# state list
+state_list: [
+    'BW',
+    'BY',
+    'BE_BB',
+    'HB',
+    'HH',
+    'HE',
+    'NI',
+    'MV',
+    'NW',
+    'RP',
+    'SL',
+    'SN',
+    'ST',
+    'SH',
+    'TH'
+]

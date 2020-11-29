@@ -12,3 +12,12 @@ raw_plz_pop:
 raw_gem_pop: # population by gemeinden (municipal)
   filepath: data/01_raw/pop_gem_de.csv
   type: pandas.CSVDataSet
+
+raw_plz_place: # plz for all towns in Germany
+  filepath: data/01_raw/zuordnung_plz_ort_landkreis.csv
+  type: pandas.CSVDataSet
+  load_args:
+      dtype: {'plz': str, 'ags': str}
+      sep: ','
+
+

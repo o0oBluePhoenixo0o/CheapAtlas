@@ -39,7 +39,6 @@ import os
 import time
 # for logging
 import logging
-
 log = logging.getLogger(__name__)
 
 

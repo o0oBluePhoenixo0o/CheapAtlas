@@ -40,7 +40,7 @@ def create_pipeline(**kwargs):
             node(
                 func=get_data,
                 inputs=['raw_plz_pop',
-                        'params:buildings_plz_path'],
+                        'params:raw_buildings_plz_path'],
                 outputs=None,
                 name='get_data'
             ),
@@ -51,4 +51,6 @@ def create_pipeline(**kwargs):
                 outputs=None,
                 name='get_geofabrik_data'
             )
-    ])
+    ],
+        tags='data_acquisition_pipeline'
+    )

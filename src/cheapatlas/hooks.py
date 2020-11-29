@@ -36,6 +36,7 @@ from kedro.pipeline import Pipeline
 from kedro.versioning import Journal
 
 from src.cheapatlas.pipelines.data_acquisition import pipeline as data_acquisition
+from src.cheapatlas.pipelines.data_preparation import pipeline as data_preparation
 
 class ProjectHooks:
     @hook_impl
@@ -47,10 +48,12 @@ class ProjectHooks:
 
         """
         data_acquisition_pipeline = data_acquisition.create_pipeline()
+        data_preparation_pipeline = data_preparation.create_pipeline()
 
         return {
-            "__default__": data_acquisition_pipeline,
-            "data_acquisition":data_acquisition_pipeline
+            "__default__": data_acquisition_pipeline + data_preparation_pipeline,
+            "data_acquisition": data_acquisition_pipeline,
+            "data_preparation": data_preparation_pipeline
 
         }
 

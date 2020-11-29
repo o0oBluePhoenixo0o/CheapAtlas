@@ -32,7 +32,18 @@ generated using Kedro 0.16.6
 """
 
 from kedro.pipeline import Pipeline, node
-
+from src.cheapatlas.pipelines.data_preparation.nodes import *
 
 def create_pipeline(**kwargs):
-    return Pipeline([])
+    return Pipeline([
+        node(
+            func=get_region_data,
+            inputs=['raw_plz_place',
+                    'params:geofabrik',
+                    'params:int_output_path',
+                    'params:raw_buildings_plz_path'],
+            outputs=None,
+            name='enhance_plz_bld_data'
+        ),
+    ], tags= "data_preparation_pipeline"
+    )

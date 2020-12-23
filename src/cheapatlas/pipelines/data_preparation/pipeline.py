@@ -38,10 +38,11 @@ def create_pipeline(**kwargs):
     return Pipeline([
         node(
             func=get_region_data,
-            inputs=['raw_plz_place',
+            inputs=['raw_plz_ags',
+                    'params:boundary_type',
                     'params:geofabrik',
                     'params:int_output_path',
-                    'params:raw_buildings_plz_path'],
+                    'params:raw_buildings_path'],
             outputs=None,
             name='enhance_plz_bld_data'
         ),

@@ -1,6 +1,9 @@
 # location to store building objects per postal code
-raw_buildings_plz_path: data/01_raw/buildings_plz
-int_output_path : data/02_intermediate/buildings_plz
+
+boundary_type: 'ags' # separate data by PLZ or AGS
+
+raw_buildings_path: data/01_raw/buildings_data
+int_output_path : data/02_intermediate/buildings_data
 
 # state list
 state_list: [

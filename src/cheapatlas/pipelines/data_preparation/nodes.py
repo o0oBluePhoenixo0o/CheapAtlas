@@ -31,7 +31,6 @@ generated using Kedro 0.16.6
 """
 import pandas as pd
 import numpy as np
-import sys
 import os
 
 from pyrosm import OSM
@@ -42,7 +41,10 @@ import logging
 log = logging.getLogger(__name__)
 
 # 1st node
-def get_region_data(plz_place, geofabrik, int_output_path, buildings_plz_path):
+def get_region_data(plz_ags,
+                    boundary_type,
+                    geofabrik,
+                    int_output_path, buildings_boundary_path):
     """
     Enhance building objects data in all PLZ with data from OSM region dump (Geofabrik)
     1. Geometry
@@ -51,21 +53,27 @@ def get_region_data(plz_place, geofabrik, int_output_path, buildings_plz_path):
     4. Classification (manual)
 
     Args:
-        plz_place: plz or all towns in Germany
+        plz_ags: collection of postal code and ags code in Germany
+        boundary_type: PLZ or AGS
         geofabrik: Geofabrik region OSM data saved location (etc: data/01_raw/geofabrik/)
         int_output_path: output save to 02_intermediate
-        buildings_plz_path: saved location of 01_raw/buildings_plz
+        buildings_boundary_path: saved location of 01_raw/buildings_path
     Returns:
 
     """
+
     # full path pbf
     region_list_path = [os.path.join(path, name) for path, subdirs, files in os.walk(geofabrik['output_path']) for name in files]
     # region pbf name
     pbf_list = [name for path, subdirs, files in os.walk(geofabrik['output_path']) for name in files]
 
+    # create saving location folder if not exists
+    if not os.path.exists(int_output_path):
+        os.makedirs(int_output_path)
+
     # Start loop for all region
     # i = 13,16 # not enough mem
-    i = 17
+    i = 0
     while i < len(pbf_list):
         # Get target region
         target_region_path = region_list_path[i]
@@ -79,47 +87,61 @@ def get_region_data(plz_place, geofabrik, int_output_path, buildings_plz_path):
 
         # Initialize the OSM parser object
         osm = OSM(target_region_path)
-        # Get buildings in the region
-        buildings = osm.get_buildings()
+        try:
+            # Get buildings in the region
+            buildings = osm.get_buildings()
 
-        logging.info(f'Total of {len(buildings)} buildings in region {target_region}')
+            # Extract info of all PLZ/AGS belong to that region
+            region_id_list = plz_ags[(_left(plz_ags.ags.str, ags_len).isin(target_ags_list))][[boundary_type]].drop_duplicates().reset_index(drop=True)
 
-        # Extract info of all PLZ belong to that region
-        region_plz_list = plz_place[(_left(plz_place.ags.str, ags_len).isin(target_ags_list))].plz.reset_index(drop=True)
-
-        # Iterate through list of PLZ to enhance dataset
-        enhance_plz(region_plz_list, buildings, buildings_plz_path, int_output_path)
-        i = i + 1
+            logging.info(f'Total of {len(buildings)} buildings for {len(region_id_list)} {boundary_type}(s) in region {target_region}')
 
 
-def enhance_plz(region_plz_list, buildings, buildings_plz_path, int_output_path):
+            # Iterate through list of PLZ/AGS to enhance dataset
+            enhance_plz(region_id_list,
+                        'ags',
+                        buildings,
+                        buildings_boundary_path,
+                        int_output_path)
+
+        except Exception as e:
+            logging.error(e)
+            logging.error(f'Cannot read {target_region} file')
+            pass
+        finally:
+            i = i + 1
+
+
+def enhance_plz(region_id_list, boundary_type,
+                buildings, buildings_boundary_path, int_output_path):
     """
-    Scan all available PLZs in the region.
-    Populate PLZ building objects with data from region OSM dump (Geofabrik)
+    Scan all available PLZ/AGS in the region.
+    Populate PLZ/AGS building objects with data from region OSM dump (Geofabrik)
 
     Args:
-        region_plz_list: list of PLZs in the region
+        region_id_list: list of PLZs in the region
+        boundary_type: PLZ or AGS code
         buildings: buildings dataframe from region OSM
-        buildings_plz_path: saved location at 01_raw/buildings_plz
+        buildings_boundary_path: saved location at 01_raw/buildings_path
         int_output_path: output save to 02_intermediate
     """
     k = 0
 
-    # Check for progress of crawled postal codes
+    # Check for progress of already enhanced areas
     name_list = os.listdir(int_output_path)
-    done_plz = [x.split('.')[0].split('_')[1] for x in name_list if 'buildings' in x]
+    id_list = [x.split('.')[0].split('_')[2] for x in name_list if 'buildings' in x]
 
-    # Get to-be-enhanced list. In list region_plz but not done_plz
-    region_plz_list = np.setdiff1d(region_plz_list, done_plz)
-    logging.info(f'Total of {len(region_plz_list)} PLZs in the region')
+    # Get to-be-enhanced list (exclude those that already enhanced with GeoFabrik data)
+    region_id_list = pd.DataFrame(np.setdiff1d(region_id_list, id_list), columns = [boundary_type])
+    logging.info(f'Total of {len(region_id_list)} {boundary_type}(s) in the region')
 
-    while k < len(region_plz_list):
-        plz = region_plz_list[k]
-        plz_path = f'{buildings_plz_path}/buildings_{plz}.csv'
+    while k < len(region_id_list):
+        boundary_id = region_id_list[boundary_type].iloc[k]
+        buildings_path = f'{buildings_boundary_path}/buildings_{boundary_type}_{boundary_id}.csv'
 
         # Read in building objects data in the postal code
         try:
-            df = pd.read_csv(plz_path,
+            df = pd.read_csv(buildings_path,
                              dtype={'tags.addr:suburb': 'object',
                                     'tags.building:levels': 'object',
                                     'tags.source': str,
@@ -144,19 +166,15 @@ def enhance_plz(region_plz_list, buildings, buildings_plz_path, int_output_path)
             df_res['surface_area'] = df_res.geometry.apply(lambda x: calculate_surface_area(x) * 10 ** 10)
             df_res['total_area'] = df_res['building_levels'].astype(int) * df_res['surface_area']
 
-            # Classify building types (manual)
+            # Naive building types classification
             df_res['building_types'] = df_res['tags.building'].apply(lambda x: manual_classify_building(x))
 
-            # Save result to 02_intermediate/buildings_plz/buildings_<plz>.csv
-            # create saving location folder if not exists
-            if not os.path.exists(int_output_path):
-                os.makedirs(int_output_path)
-
-            logging.info(f'Total of {len(df)} buildings in PLZ {plz} at position {k}/{len(region_plz_list)}. Saving result...')
+            # Save result to 02_intermediate/buildings_plz/buildings_<boundary_type>_<boundary_id>.csv
+            logging.info(f'Total of {len(df)} buildings in {boundary_type} {boundary_id} at position {k}/{len(region_id_list)}. Saving result...')
             # Save result
-            df_res.to_csv(f'{int_output_path}/buildings_{plz}.csv', index=False)
+            df_res.to_csv(f'{int_output_path}/buildings_{boundary_type}_{boundary_id}.csv', index=False)
         except Exception:
-            logging.warning(f'Cannot enhance data on PLZ {plz} at position {k}/{len(region_plz_list)}')
+            logging.warning(f'Cannot enhance data on {boundary_type} {boundary_id} at position {k}/{len(region_id_list)}')
         finally:
             k = k + 1
 
@@ -174,12 +192,14 @@ def manual_classify_building(building_type):
     'Estimation of Building Types on OpenStreetMap Based on Urban Morphology Analysis'
     
     """
+
     residential = ['apartments','aparments (s)',
                    'domitory','house','residential',
                    'retirement_home', 'terrace',
                    # self-add
                   'allotment_house', 'bungalow','summer_house','semidetached_house',
-                  'terraced_house','dwelling_house','dormitory','family_house']
+                  'terraced_house','dwelling_house','dormitory','family_house','static_caravan',
+                   'ger','houseboat']
     
     commercial = ['bank','bar','boat_rental','cafe',
                  'club','dentist','doctors','fast_food','fuel',
@@ -214,7 +234,7 @@ def manual_classify_building(building_type):
               # self-add
               'cathedral','historic','ambulance_station','bridge','government','transportation',
               'synagogue','sports_centre','ship','mosque','tech_cab','railway','gymnasium','religious',
-              'chapel','civic','sports_hall','pavilion','bahnhof'
+              'chapel','civic','sports_hall','pavilion','bahnhof','shrine','ruins','digester'
              ]
     
     not_classified = ['yes','YES']

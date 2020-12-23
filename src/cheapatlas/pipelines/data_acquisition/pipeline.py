@@ -39,10 +39,11 @@ def create_pipeline(**kwargs):
         [
             node(
                 func=get_data,
-                inputs=['raw_plz_pop',
-                        'params:raw_buildings_plz_path'],
+                inputs=['raw_plz_ags',
+                        'params:boundary_type',
+                        'params:raw_buildings_path'],
                 outputs=None,
-                name='get_data'
+                name='get_osm_data'
             ),
             node(
                 func=download_url,

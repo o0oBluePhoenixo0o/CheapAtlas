@@ -3,21 +3,27 @@
 # Documentation for this file format can be found in "The Data Catalog"
 # Link: https://kedro.readthedocs.io/en/stable/05_data/01_data_catalog.html
 # --- raw
-raw_plz_pop:
-  filepath: data/01_raw/plz_einwohner.csv
-  type: pandas.CSVDataSet
-  load_args:
-    dtype: {'plz': str, 'einwhoner': int}
 
-raw_gem_pop: # population by gemeinden (municipal)
-  filepath: data/01_raw/pop_gem_de.csv
-  type: pandas.CSVDataSet
-
-raw_plz_place: # plz for all towns in Germany
+raw_plz_ags: # plz for all towns in Germany
   filepath: data/01_raw/zuordnung_plz_ort_landkreis.csv
   type: pandas.CSVDataSet
   load_args:
-      dtype: {'plz': str, 'ags': str}
-      sep: ','
+    dtype: {'plz': str, 'ags': str}
+    sep: ','
 
+raw_de_population: # population distribution on municipal level in Germany
+  filepath: data/01_raw/de_population_2019.csv
+  type: pandas.CSVDataSet
+  load_args:
+    sep: ';'
+    encoding: 'cp1250'
+    dtype: {'1_Auspraegung_Code':str}
+
+raw_de_living: # accommodations across Germany
+  filepath: data/01_raw/de_living_2019.csv
+  type: pandas.CSVDataSet
+  load_args:
+    sep: ';'
+    encoding: 'cp1250'
+    dtype: {'1_Auspraegung_Code':str}
 

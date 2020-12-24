@@ -34,17 +34,17 @@ import numpy as np
 import os
 
 from pyrosm import OSM
-from src.cheapatlas.commons.helpers import _left
+from src.cheapatlas.commons.helpers import _left, _calculate_surface_area
 
 # for logging
 import logging
 log = logging.getLogger(__name__)
 
-# 1st node
+
 def get_region_data(plz_ags,
                     boundary_type,
                     geofabrik,
-                    int_output_path, buildings_boundary_path):
+                    int_buildings_path, buildings_boundary_path):
     """
     Enhance building objects data in all PLZ with data from OSM region dump (Geofabrik)
     1. Geometry
@@ -56,7 +56,7 @@ def get_region_data(plz_ags,
         plz_ags: collection of postal code and ags code in Germany
         boundary_type: PLZ or AGS
         geofabrik: Geofabrik region OSM data saved location (etc: data/01_raw/geofabrik/)
-        int_output_path: output save to 02_intermediate
+        int_buildings_path: output save to 02_intermediate
         buildings_boundary_path: saved location of 01_raw/buildings_path
     Returns:
 
@@ -68,8 +68,8 @@ def get_region_data(plz_ags,
     pbf_list = [name for path, subdirs, files in os.walk(geofabrik['output_path']) for name in files]
 
     # create saving location folder if not exists
-    if not os.path.exists(int_output_path):
-        os.makedirs(int_output_path)
+    if not os.path.exists(int_buildings_path):
+        os.makedirs(int_buildings_path)
 
     # Start loop for all region
     # i = 13,16 # not enough mem
@@ -102,7 +102,7 @@ def get_region_data(plz_ags,
                         'ags',
                         buildings,
                         buildings_boundary_path,
-                        int_output_path)
+                        int_buildings_path)
 
         except Exception as e:
             logging.error(e)
@@ -113,7 +113,7 @@ def get_region_data(plz_ags,
 
 
 def enhance_plz(region_id_list, boundary_type,
-                buildings, buildings_boundary_path, int_output_path):
+                buildings, buildings_boundary_path, int_buildings_path):
     """
     Scan all available PLZ/AGS in the region.
     Populate PLZ/AGS building objects with data from region OSM dump (Geofabrik)
@@ -123,12 +123,12 @@ def enhance_plz(region_id_list, boundary_type,
         boundary_type: PLZ or AGS code
         buildings: buildings dataframe from region OSM
         buildings_boundary_path: saved location at 01_raw/buildings_path
-        int_output_path: output save to 02_intermediate
+        int_buildings_path: output save to 02_intermediate
     """
     k = 0
 
     # Check for progress of already enhanced areas
-    name_list = os.listdir(int_output_path)
+    name_list = os.listdir(int_buildings_path)
     id_list = [x.split('.')[0].split('_')[2] for x in name_list if 'buildings' in x]
 
     # Get to-be-enhanced list (exclude those that already enhanced with GeoFabrik data)
@@ -163,7 +163,7 @@ def enhance_plz(region_id_list, boundary_type,
             df_res.geometry = df_res.geometry.fillna(np.nan)
 
             # Calculate surface + total area
-            df_res['surface_area'] = df_res.geometry.apply(lambda x: calculate_surface_area(x) * 10 ** 10)
+            df_res['surface_area'] = df_res.geometry.apply(lambda x: _calculate_surface_area(x) * 10 ** 10)
             df_res['total_area'] = df_res['building_levels'].astype(int) * df_res['surface_area']
 
             # Naive building types classification
@@ -172,19 +172,12 @@ def enhance_plz(region_id_list, boundary_type,
             # Save result to 02_intermediate/buildings_plz/buildings_<boundary_type>_<boundary_id>.csv
             logging.info(f'Total of {len(df)} buildings in {boundary_type} {boundary_id} at position {k}/{len(region_id_list)}. Saving result...')
             # Save result
-            df_res.to_csv(f'{int_output_path}/buildings_{boundary_type}_{boundary_id}.csv', index=False)
+            df_res.to_csv(f'{int_buildings_path}/buildings_{boundary_type}_{boundary_id}.csv', index=False)
         except Exception:
             logging.warning(f'Cannot enhance data on {boundary_type} {boundary_id} at position {k}/{len(region_id_list)}')
         finally:
             k = k + 1
 
-def calculate_surface_area(polygon):
-    'Calculate surface area of the building object'
-    if polygon == None:
-        area = 0
-    else:
-        area = polygon.area
-    return area
 
 def manual_classify_building(building_type):
     """
@@ -257,3 +250,83 @@ def manual_classify_building(building_type):
         result = 'other'
     
     return result
+
+
+def calculate_residential_diff(plz_ags: pd.DataFrame,
+                               de_living: pd.DataFrame,
+                               int_buildings_path: str,
+                               rep_diff_result_path: str):
+    """
+    2nd node in data preparation pipeline
+    Aim to generate a result dataframe showing the discrepancies between official residential buildings count vs OSM count
+
+    Args:
+        plz_ags: PLZ and AGS list of Germany
+        de_living: official residential buildings dataset from Statistical Gov Office Germany
+        int_buildings_path: saved buildings data location in 02_intermediate
+        rep_diff_result_path: location of reporting for diff
+
+    """
+    # Rename columns
+    de_living.rename(columns={'1_Auspraegung_Code': 'ags',
+                               '1_Auspraegung_Label': 'place',
+                               '2_Auspraegung_Label': 'indication',
+                               '2_Merkmal_Label': 'measurement_type'}, inplace=True)
+
+    # Filter to get only local AGS codes
+    de_living = de_living[de_living.ags.isin(plz_ags.ags)]
+    # Remove extra spaces in Names
+    de_living['place'] = de_living['place'].apply(lambda x: x.strip())
+
+    for count, boundary_id in enumerate(plz_ags.ags.drop_duplicates()):
+        try:
+            osm_filename = os.path.join(int_buildings_path, f'buildings_ags_{boundary_id}.csv')
+            ags_osm = pd.read_csv(osm_filename)
+
+            diff_result = get_diff_residential_count(de_living, ags_osm, boundary_id)
+
+            if not os.path.exists(rep_diff_result_path):
+                diff_result.to_csv(rep_diff_result_path, header=True, index=False)
+            else:
+                diff_result.to_csv(rep_diff_result_path, mode='a', header=False, index=False)
+            logging.info(f'Complete calculation for {boundary_id} AGS at {count}/{len(plz_ags.ags.drop_duplicates())}')
+        except:
+            logging.error(f'Cannot calculate for {boundary_id} AGS at {count}/{len(plz_ags.ags.drop_duplicates())}')
+    return None
+
+
+def get_diff_residential_count(de_living: pd.DataFrame,
+                               ags_osm: pd.DataFrame,
+                               boundary_id: str):
+    """
+    Calculate the difference between area's official residential buildings count vs OSM count
+
+    Args:
+        de_living: official residential buildings dataset from Germany Statistical Office
+        ags_osm: preprocessed data in a AGS (municipal) area from OSM and Geofabrik with preliminary classification for building types
+        boundary_id: AGS code of the area
+
+    Results:
+        Collection of boundary_id, ags_place, osm_count, official_count, abs_diff, pct_diff
+    """
+
+    # Official residential buildings count
+    official_count = int(de_living[(de_living.ags == boundary_id) &
+                                    (de_living.measurement_type == 'Wohngebäude nach Anzahl der Wohnungen') &
+                                    (de_living.indication == 'Insgesamt')].BAUNW9__Wohngebaeude__Anzahl.iloc[0])
+    # get AGS name
+    ags_place = de_living[de_living.ags == boundary_id].place.iloc[0]
+
+    # OSM residential buildings count
+    osm_count = ags_osm[ags_osm.building_types == 'residential'].shape[0]
+
+    # differences in number
+    abs_diff = abs(osm_count - official_count)
+    # diff in percentage
+    pct_diff = round((abs_diff / official_count) * 100, 2)
+
+    # Generate result list
+    res_list = [boundary_id, ags_place, osm_count, official_count, abs_diff, pct_diff]
+
+    return pd.DataFrame(res_list,
+                        index=['ags', 'ags_place', 'osm_count', 'official_count', 'abs_diff', 'pct_diff']).T

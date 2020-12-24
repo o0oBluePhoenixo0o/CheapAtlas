@@ -26,4 +26,3 @@ raw_de_living: # accommodations across Germany
     sep: ';'
     encoding: 'cp1250'
     dtype: {'1_Auspraegung_Code':str}
-

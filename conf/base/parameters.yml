@@ -3,26 +3,13 @@
 boundary_type: 'ags' # separate data by PLZ or AGS
 
 raw_buildings_path: data/01_raw/buildings_data
-int_output_path : data/02_intermediate/buildings_data
+int_buildings_path : data/02_intermediate/buildings_data
+rep_diff_result_path: data/08_reporting/residential_diff.csv
 
-# state list
-state_list: [
-    'BW',
-    'BY',
-    'BE_BB',
-    'HB',
-    'HH',
-    'HE',
-    'NI',
-    'MV',
-    'NW',
-    'RP',
-    'SL',
-    'SN',
-    'ST',
-    'SH',
-    'TH'
-]
+# Germany state list
+state_list: ['BW','BY','BE_BB','HB',
+             'HH','HE','NI','MV','NW',
+             'RP','SL','SN','ST','SH','TH']
 
 # geofabrik OSM data dump, updated daily
 geofabrik:

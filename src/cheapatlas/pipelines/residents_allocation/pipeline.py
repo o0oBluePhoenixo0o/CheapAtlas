@@ -27,33 +27,12 @@
 # limitations under the License.
 
 """
-This is a boilerplate pipeline 'data_preparation'
+This is a boilerplate pipeline 'residents_allocation'
 generated using Kedro 0.16.6
 """
 
 from kedro.pipeline import Pipeline, node
-from src.cheapatlas.pipelines.data_preparation.nodes import *
+
 
 def create_pipeline(**kwargs):
-    return Pipeline([
-        node(
-            func=get_region_data,
-            inputs=['raw_plz_ags',
-                    'params:boundary_type',
-                    'params:geofabrik',
-                    'params:int_buildings_path',
-                    'params:raw_buildings_path'],
-            outputs=None,
-            name='enhance_plz_bld_data'
-        ),
-        node(
-            func=calculate_residential_diff,
-            inputs=['raw_plz_ags',
-                    'raw_de_living',
-                    'params:int_buildings_path',
-                    'params:rep_diff_result_path'],
-            outputs=None,
-            name='calculate_residential_diff'
-        )
-    ], tags= "data_preparation_pipeline"
-    )
+    return Pipeline([])

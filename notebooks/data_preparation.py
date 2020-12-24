@@ -4,7 +4,7 @@ import numpy as np
 # calculate surface area
 from area import area 
 
-def calculate_surface_area(polygon):
+def _calculate_surface_area(polygon):
     'Calculate surface area of the building object'
     if polygon == None:
         area = 0
@@ -204,7 +204,7 @@ def enhance_plz(region_plz_list, buildings, output_path):
         df_res.geometry = df_res.geometry.fillna(np.nan)
         
         # Calculate surface + total area
-        df_res['surface_area'] = df_res.geometry.apply(lambda x: calculate_surface_area(x) * 10**10)
+        df_res['surface_area'] = df_res.geometry.apply(lambda x: _calculate_surface_area(x) * 10**10)
         df_res['total_area'] = df['building_levels'].astype(int) * df_res['surface_area']
         
         # Classify building types (manual)

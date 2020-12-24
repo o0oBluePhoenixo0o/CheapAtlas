@@ -1,0 +1,5 @@
+Type,Source,Acquire method,Description,Link
+Geographic,Suche-postleitzahl,Manual download csv file,List of all postal codes with their AGS (municipal codes) in Germany,https://www.suche-postleitzahl.org/downloads
+Geographic,OpenStreetMap,Python access to Overpass API,Iterate through list of AGS and download all available building objects within the area through OverPass API,https://overpass-turbo.eu/
+Geographic,GeoFabrik,Python access to existing dump,Automate pipeline to download all 28 pbf files of Germany OSM. Update daily,https://download.geofabrik.de/europe/germany.html
+Demographics,Regionaldatenbank Deutschland,Manual download with registered account,"Germany Statistical Office page, create account (free) to download demographics data (populations & accommodations) for all available municipal areas with AGS code",https://www.regionalstatistik.de/genesis/online

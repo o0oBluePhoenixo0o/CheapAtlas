@@ -44,7 +44,7 @@ def create_pipeline(**kwargs):
                     'params:int_buildings_path',
                     'params:raw_buildings_path'],
             outputs=None,
-            name='enhance_plz_bld_data'
+            name='enhance_bld_data'
         ),
         node(
             func=calculate_residential_diff,

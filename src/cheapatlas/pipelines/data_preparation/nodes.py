@@ -290,7 +290,8 @@ def calculate_residential_diff(plz_ags: pd.DataFrame,
             else:
                 diff_result.to_csv(rep_diff_result_path, mode='a', header=False, index=False)
             logging.info(f'Complete calculation for {boundary_id} AGS at {count}/{len(plz_ags.ags.drop_duplicates())}')
-        except:
+        except Exception as e:
+            logging.error(e)
             logging.error(f'Cannot calculate for {boundary_id} AGS at {count}/{len(plz_ags.ags.drop_duplicates())}')
     return None
 
@@ -318,7 +319,8 @@ def get_diff_residential_count(de_living: pd.DataFrame,
     ags_place = de_living[de_living.ags == boundary_id].place.iloc[0]
 
     # OSM residential buildings count
-    osm_count = ags_osm[ags_osm.building_types == 'residential'].shape[0]
+    osm_count = len(ags_osm[ags_osm.building_types == 'residential'])
+    osm_unidentified_count = len(ags_osm[ags_osm.building_types == 'to_be_classified'])
 
     # differences in number
     abs_diff = abs(osm_count - official_count)
@@ -326,7 +328,8 @@ def get_diff_residential_count(de_living: pd.DataFrame,
     pct_diff = round((abs_diff / official_count) * 100, 2)
 
     # Generate result list
-    res_list = [boundary_id, ags_place, osm_count, official_count, abs_diff, pct_diff]
+    res_list = [boundary_id, ags_place, osm_count, osm_unidentified_count, official_count, abs_diff, pct_diff]
 
     return pd.DataFrame(res_list,
-                        index=['ags', 'ags_place', 'osm_count', 'official_count', 'abs_diff', 'pct_diff']).T
+                        index=['ags', 'ags_place', 'osm_residential_count', 'osm_unidentified_count',
+                               'official_residential_count', 'abs_diff', 'pct_diff']).T

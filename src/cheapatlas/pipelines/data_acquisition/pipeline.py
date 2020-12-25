@@ -43,7 +43,7 @@ def create_pipeline(**kwargs):
                         'params:boundary_type',
                         'params:raw_buildings_path'],
                 outputs=None,
-                name='get_osm_data'
+                name='get_overpass_data'
             ),
             node(
                 func=download_url,

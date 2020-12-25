@@ -18,3 +18,4 @@ def _swap_2_cols(df: pd.DataFrame, a:str, b:str):
     df = df[cols]
     
     return df
+

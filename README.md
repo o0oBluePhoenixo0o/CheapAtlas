@@ -4,7 +4,7 @@ How to build your own simple demographics atlas using OSM (OpenStreetMap) & OGD 
 
 Repository of the project "CheapAtlas"
 
-Link to Medium article: 
+Link to Medium article part 1 (data gathering & cleaning): [LINK HERE](https://towardsdatascience.com/kedro-hands-on-build-your-own-demographics-atlas-pt-1-16f2cb6676d5)
 
 ![In-a-nutshell](docs/In%20a%20nutshell%202.png)
 
@@ -19,5 +19,5 @@ The current project is separated into 4 modular pipelines (4 stages)
     - Population (separated by age and gender for each municipal): https://www.regionalstatistik.de/genesis//online?operation=table&code=12411-02-03-5&bypass=true&levelindex=0&levelid=1608920330516#abreadcrumb
     - Accommodations https://www.regionalstatistik.de/genesis//online?operation=table&code=31231-02-01-5&bypass=true&levelindex=1&levelid=1608920543970#abreadcrumb
     - Municipality codes https://www.suche-postleitzahl.org/downloads (dowload the zuordnung_plz_ort_landkreis.csv and only use the columns ags, osm - you can delete the rest)
-2. Install necessary packages ```pip install src/requirements.txt```
+2. Install necessary packages ```pip install -r src/requirements.txt```
 3. Run the whole project by ```kedro run``` or run each pipeline (with tags or names)

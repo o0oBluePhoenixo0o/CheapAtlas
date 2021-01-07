@@ -72,7 +72,6 @@ def get_region_data(plz_ags,
         os.makedirs(int_buildings_path)
 
     # Start loop for all region
-    # i = 13,16 # not enough mem
     i = 0
     while i < len(pbf_list):
         # Get target region

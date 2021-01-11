@@ -25,14 +25,9 @@
 #
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """
-This is a boilerplate pipeline 'buildings_identification'
+This is a boilerplate pipeline 'buildings_classification'
 generated using Kedro 0.16.6
 """
 
-from kedro.pipeline import Pipeline, node
-
-
-def create_pipeline(**kwargs):
-    return Pipeline([])
+from .pipeline import create_pipeline  # NOQA

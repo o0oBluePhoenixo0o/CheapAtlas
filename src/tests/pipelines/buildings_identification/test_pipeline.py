@@ -26,7 +26,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-This is a boilerplate test file for pipeline 'buildings_identification'
+This is a boilerplate test file for pipeline 'buildings_classification'
 generated using Kedro 0.16.6.
 Please add your pipeline tests here.
 

@@ -55,5 +55,5 @@ def create_pipeline(**kwargs):
             outputs=None,
             name='calculate_residential_diff'
         )
-    ], tags= "data_preparation_pipeline"
+    ], tags="data_preparation_pipeline"
     )

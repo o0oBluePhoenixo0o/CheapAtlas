@@ -34,7 +34,7 @@ import numpy as np
 import os
 
 from pyrosm import OSM
-from src.cheapatlas.commons.helpers import _left, _calculate_surface_area
+from src.cheapatlas.commons.helpers import _left
 
 # for logging
 import logging
@@ -48,9 +48,7 @@ def get_region_data(plz_ags,
     """
     Enhance building objects data in all PLZ with data from OSM region dump (Geofabrik)
     1. Geometry
-    2. Surface area
-    3. Total area
-    4. Classification (manual)
+    2. Classification (manual)
 
     Args:
         plz_ags: collection of postal code and ags code in Germany
@@ -97,7 +95,7 @@ def get_region_data(plz_ags,
 
 
             # Iterate through list of PLZ/AGS to enhance dataset
-            enhance_plz(region_id_list,
+            enhance_area(region_id_list,
                         'ags',
                         buildings,
                         buildings_boundary_path,
@@ -111,7 +109,7 @@ def get_region_data(plz_ags,
             i = i + 1
 
 
-def enhance_plz(region_id_list, boundary_type,
+def enhance_area(region_id_list, boundary_type,
                 buildings, buildings_boundary_path, int_buildings_path):
     """
     Scan all available PLZ/AGS in the region.
@@ -153,6 +151,9 @@ def enhance_plz(region_id_list, boundary_type,
             # replace NaN in building_levels
             df = df.rename(columns={'tags.building:levels': 'building_levels',
                                     'tags.addr:postcode': 'postcode'})
+
+            # add boundary_id to boundary_type column
+            df[boundary_type] = boundary_id
             # Fill all missing building level = 1 floor
             df.building_levels = df.building_levels.fillna(1)
 
@@ -161,10 +162,6 @@ def enhance_plz(region_id_list, boundary_type,
                               on='id')
             df_res.geometry = df_res.geometry.fillna(np.nan)
 
-            # Calculate surface + total area
-            df_res['surface_area'] = df_res.geometry.apply(lambda x: _calculate_surface_area(x) * 10 ** 10)
-            df_res['total_area'] = df_res['building_levels'].astype(int) * df_res['surface_area']
-
             # Naive building types classification
             df_res['building_types'] = df_res['tags.building'].apply(lambda x: manual_classify_building(x))
 
@@ -172,6 +169,7 @@ def enhance_plz(region_id_list, boundary_type,
             logging.info(f'Total of {len(df)} buildings in {boundary_type} {boundary_id} at position {k}/{len(region_id_list)}. Saving result...')
             # Save result
             df_res.to_csv(f'{int_buildings_path}/buildings_{boundary_type}_{boundary_id}.csv', index=False)
+
         except Exception:
             logging.warning(f'Cannot enhance data on {boundary_type} {boundary_id} at position {k}/{len(region_id_list)}')
         finally:

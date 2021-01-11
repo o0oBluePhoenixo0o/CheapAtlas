@@ -25,9 +25,26 @@
 #
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 """
-This is a boilerplate pipeline 'buildings_identification'
+This is a boilerplate pipeline 'buildings_classification'
 generated using Kedro 0.16.6
 """
 
-from .pipeline import create_pipeline  # NOQA
+from kedro.pipeline import Pipeline, node
+from src.cheapatlas.pipelines.buildings_classification.nodes import *
+
+def create_pipeline(**kwargs):
+    return Pipeline([
+        node(
+            func=generate_features,
+            inputs=['raw_plz_ags',
+                    'params:boundary_type',
+                    'params:int_buildings_path',
+                    'params:pri_buildings_path'],
+            outputs=None,
+            name='generate_footprint_features'
+        )
+    ], tags="buildings_classification_pipeline"
+    )
+

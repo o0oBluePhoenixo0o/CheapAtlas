@@ -52,6 +52,5 @@ def create_pipeline(**kwargs):
                 outputs=None,
                 name='get_geofabrik_data'
             )
-    ],
-        tags='data_acquisition_pipeline'
+    ], tags='data_acquisition_pipeline'
     )

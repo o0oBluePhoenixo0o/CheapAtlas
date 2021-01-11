@@ -1,4 +1,4 @@
-# This is a boilerplate parameters config generated for pipeline 'buildings_identification'
+# This is a boilerplate parameters config generated for pipeline 'buildings_classification'
 # using Kedro 0.16.6.
 #
 # Documentation for this file format can be found in "Parameters"

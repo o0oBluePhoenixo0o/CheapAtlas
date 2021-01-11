@@ -4,14 +4,6 @@ import numpy as np
 # calculate surface area
 from area import area 
 
-def _calculate_surface_area(polygon):
-    'Calculate surface area of the building object'
-    if polygon == None:
-        area = 0
-    else:
-        area = polygon.area
-    return area
-
 def manual_classify_building(building_type):
     """
     Adopt manual classification from the paper and add further tags
@@ -163,10 +155,10 @@ def get_region_data(buildings_plz_location, geofabrik_location, region_ags_dict,
         region_plz_list = plz_place[(dp.left(plz_place.ags.str, ags_len).isin(target_ags_list))].plz.reset_index(drop=True)
         
         # Iterate through list of PLZ to enhance dataset
-        enhance_plz(region_plz_list, buildings, output_path)
+        enhance_area(region_plz_list, buildings, output_path)
         i = i + 1                     
         
-def enhance_plz(region_plz_list, buildings, output_path):
+def enhance_area(region_plz_list, buildings, output_path):
     """
     Scan all available PLZs in the region.
     Populate PLZ building objects with data from region OSM dump (Geofabrik)

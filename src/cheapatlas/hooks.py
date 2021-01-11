@@ -37,6 +37,7 @@ from kedro.versioning import Journal
 
 from src.cheapatlas.pipelines.data_acquisition import pipeline as data_acquisition
 from src.cheapatlas.pipelines.data_preparation import pipeline as data_preparation
+from src.cheapatlas.pipelines.buildings_classification import pipeline as buildings_classification
 
 class ProjectHooks:
     @hook_impl
@@ -49,12 +50,13 @@ class ProjectHooks:
         """
         data_acquisition_pipeline = data_acquisition.create_pipeline()
         data_preparation_pipeline = data_preparation.create_pipeline()
+        buildings_classification_pipeline = buildings_classification.create_pipeline()
 
         return {
-            "__default__": data_acquisition_pipeline + data_preparation_pipeline,
+            "__default__": data_acquisition_pipeline + data_preparation_pipeline + buildings_classification_pipeline,
             "data_acquisition": data_acquisition_pipeline,
-            "data_preparation": data_preparation_pipeline
-
+            "data_preparation": data_preparation_pipeline,
+            "buildings_classification": buildings_classification_pipeline
         }
 
     @hook_impl

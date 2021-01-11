@@ -4,6 +4,8 @@ boundary_type: 'ags' # separate data by PLZ or AGS
 
 raw_buildings_path: data/01_raw/buildings_data
 int_buildings_path : data/02_intermediate/buildings_data
+pri_buildings_path: data/03_primary/buildings_data
+
 rep_diff_result_path: data/08_reporting/residential_diff.csv
 
 # Germany state list

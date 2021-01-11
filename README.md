@@ -6,12 +6,12 @@ Repository of the project "CheapAtlas"
 
 Link to Medium article part 1 (data gathering & cleaning): [LINK HERE](https://towardsdatascience.com/kedro-hands-on-build-your-own-demographics-atlas-pt-1-16f2cb6676d5)
 
-![In-a-nutshell](docs/In%20a%20nutshell%202.png)
+![In-a-nutshell](docs/1_In%20a%20nutshell%202.png)
 
 # How to use
 
 The current project is separated into 4 modular pipelines (4 stages)
-![Project pipelines](docs/Project%20flowchart.jpg)
+![Project pipelines](docs/1_Project%20flowchart.jpg)
 
 1. Clone the whole repository (main branch). Create ```data``` folder if not exists (you will have to run ```data_preparation_pipeline``` to get the data on your local machine)
 2. Manually download the data from Germany Regional Data Bank (demographics) & list of AGS codes (municipality keys):

@@ -32,15 +32,24 @@ generated using Kedro 0.16.6
 import pandas as pd
 import numpy as np
 import os
+import re
 from shapely import wkt
 from shapely.geometry import box, Polygon
 from geopandas import GeoDataFrame
 
+import hdbscan
+
 import logging
 log = logging.getLogger(__name__)
 
+from src.cheapatlas.commons.helpers import _left
+
+import warnings
+# Disable depreciation warning
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+
 # 1st node
-def generate_features(region_id_list,
+def generate_features(plz_ags,
                       boundary_type,
                       int_buildings_path,
                       pri_buildings_path):
@@ -49,7 +58,7 @@ def generate_features(region_id_list,
     Populate PLZ/AGS building objects with data from region OSM dump (Geofabrik)
 
     Args:
-        region_id_list: list of AGS in the region
+        plz_ags: list of AGS in the region
         boundary_type: PLZ or AGS code
         int_buildings_path: output save to 02_intermediate
         pri_buildings_path: output save to 03_primary
@@ -65,13 +74,13 @@ def generate_features(region_id_list,
     id_list = [x.split('.')[0].split('_')[2] for x in name_list if 'buildings' in x]
 
     # Get list of AGS codes
-    region_id_list = region_id_list[[boundary_type]]
-    region_id_list = pd.DataFrame(np.setdiff1d(region_id_list, id_list), columns=[boundary_type])
+    plz_ags = plz_ags[[boundary_type]]
+    plz_ags = pd.DataFrame(np.setdiff1d(plz_ags, id_list), columns=[boundary_type])
 
-    logging.info(f'Total of {len(region_id_list)} {boundary_type}(s) in the country')
+    logging.info(f'Total of {len(plz_ags)} {boundary_type}(s) in the country')
 
-    while k < len(region_id_list):
-        boundary_id = region_id_list[boundary_type].iloc[k]
+    while k < len(plz_ags):
+        boundary_id = plz_ags[boundary_type].iloc[k]
         buildings_path = f'{int_buildings_path}/buildings_{boundary_type}_{boundary_id}.csv'
 
         try:
@@ -91,20 +100,19 @@ def generate_features(region_id_list,
             df_geo = GeoDataFrame(df, geometry='geometry')
 
             # Shape & Size
-            df_geo[['surface_area','rectangularity']] = df_geo.apply(lambda row: pd.Series(shape_size(row['geometry'])),
-                                                                     axis=1)
+            df_geo[['surface_area','rectangularity']] = df_geo.apply(lambda row: pd.Series(shape_size(row['geometry'])),axis=1)
 
             # Total area
             df_geo['total_area'] = df_geo['building_levels'].astype(int) * df_geo['surface_area']
 
             # Save result to 02_intermediate/buildings_plz/buildings_<boundary_type>_<boundary_id>.csv
-            logging.info(f'Total of {len(df)} buildings in {boundary_type} {boundary_id} at position {k+1}/{len(region_id_list)}. Saving result...')
+            logging.info(f'Total of {len(df)} buildings in {boundary_type} {boundary_id} at position {k+1}/{len(plz_ags)}. Saving result...')
 
             # Save result
             df_geo.to_csv(f'{pri_buildings_path}/buildings_{boundary_type}_{boundary_id}.csv', index=False)
 
         except Exception as e:
-            logging.warning(f'Cannot enhance data on {boundary_type} {boundary_id} at position {k+1}/{len(region_id_list)}. Error: {e}')
+            logging.warning(f'Cannot enhance data on {boundary_type} {boundary_id} at position {k+1}/{len(plz_ags)}. Error: {e}')
         finally:
             k = k + 1
 
@@ -133,6 +141,68 @@ def shape_size(footprint_coord):
 
 
 # 2nd node
+def building_block_clustering(plz_ags:pd.DataFrame,
+                              boundary_type:str,
+                              pri_buildings_path:str,
+                              fea_buildings_path:str):
+    """
+    This node aims to cluster building footprints into block using HDBSCAN and save district-level data into 04_feature
+    1. Aggregate data from municipality-level (AGS key) to district-level (the first 5-digit of AGS key)
+    2. Perform clustering on district-level dataset (total ~ 400 districts in Germany)
+
+    Args:
+        plz_ags: list of municipalities in Germany
+        boundary_type: PLZ or AGS code
+        pri_buildings_path: inputs from 03_primary
+        fea_buildings_path: outputs save to 04_feature
+    """
+    # create saving location folder if not exists
+    if not os.path.exists(fea_buildings_path):
+        os.makedirs(fea_buildings_path)
+
+    # Generate list of districts
+    plz_ags['ags_district'] = plz_ags[boundary_type].apply(lambda x: _left(x, 5))
+    # Group to get only district-level ==> ~ 400 districts
+    plz_ags_dist = plz_ags.groupby('ags_district').size().to_frame('count').reset_index()
+
+    # Iterate through list of district and perform clustering on each of them
+    for idx, dist_id in enumerate(plz_ags_dist.ags_district):
+        try:
+            logging.info(f'Assembling footprints data for district {dist_id} at position {idx+1}/{len(plz_ags_dist)+1}')
+            dist_df = generate_dist_data(dist_id, pri_buildings_path)
+
+            # Drop unnecessary column
+            dist_df.drop(columns=['Unnamed: 0'], errors='ignore', inplace=True)
+            #### TEMP #### RUN ONLY ONCE
+            dist_df.rename(columns={'postcode': 'ags'}, errors='ignore', inplace=True)
+
+            # Perform on district-level dataframe
+            # parameters follow the paper suggestion baseline
+            buildings_clust_df = hdbscan_bld(dist_df,
+                                             min_cluster_size=8, #min number of buildings in 1 cluster
+                                             cluster_selection_epsilon=0.0003,  # 3 meters
+                                             min_samples=2)
+            # Save result
+            buildings_clust_df.to_csv(f'{fea_buildings_path}/buildings_{boundary_type}_{dist_id}.csv', index=False)
+        except Exception as e:
+            logging.warning(f'Cannot clustering data at district {dist_id} at position {idx+1}/{len(plz_ags_dist)+1}. Error: {e}')
+
+def generate_dist_data(dist_id, buildings_pri_path):
+    """Generate district-level building footprints dataframe"""
+
+    regex = re.compile(f'(buildings_ags_{dist_id})')
+    # Create district building dataframe
+    li = []
+    for root, dirs, files in os.walk(buildings_pri_path):
+        for file in files:
+            if regex.match(file):
+                df = pd.read_csv(os.path.join(buildings_pri_path, file),
+                                 index_col=None, header=0)
+                li.append(df)
+
+    dist_df = pd.concat(li, axis=0, ignore_index=True)
+    return dist_df
+
 def hdbscan_bld(buildings_df: pd.DataFrame, min_cluster_size: int, cluster_selection_epsilon: int, min_samples: int):
     """
     Take in building objects dataframe with coordinates (lat + lon) and perform HDBSCAN to group buildings into blocks
@@ -167,32 +237,15 @@ def hdbscan_bld(buildings_df: pd.DataFrame, min_cluster_size: int, cluster_selec
 
     return buildings_clust_df
 
-
 # 3rd node
-def generate_stats_table(buildings_clust_df):
+def building_types_classification()
     """
-    Generate statistical analysis table of building types in the area
-
+    Classify building footprints into residential and non-residential. 
+    Merge results with existing naive classification (from data_preparation pipeline)
+    
     Args:
-        buildings_clust_df: building footprints dataframe after performed building blocks assignment (HDBSCAN)
-
-    Return:
-        stat_table: statistical analysis results which contains means and standard deviations values for every building type in the area
+        fea_buildings_path: inputs from 04_feature
+        model_output_path: outputs to 07_model_output
+        
+    
     """
-
-    # Mean
-    mean_table = buildings_clust_df.groupby('building_types')[
-        ['building_types', 'surface_area', 'rectangularity']].mean().reset_index()
-    mean_table.columns = ['building_types', 'mean_surface_area', 'mean_rectangularity']
-
-    # Standard deviation
-    sd_table = buildings_clust_df.groupby('building_types')[['surface_area', 'rectangularity']].agg(np.std,
-                                                                                                    ddof=0).reset_index()
-
-    # Rename columns
-    sd_table.columns = ['building_types', 'sd_surface_area', 'sd_rectangularity']
-    stat_table = mean_table.merge(sd_table)
-
-    stat_table = stat_table[stat_table.columns[[0, 1, 3, 2, 4]]]
-
-    return stat_table

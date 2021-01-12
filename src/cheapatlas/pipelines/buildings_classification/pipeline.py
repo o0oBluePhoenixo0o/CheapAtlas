@@ -44,6 +44,15 @@ def create_pipeline(**kwargs):
                     'params:pri_buildings_path'],
             outputs=None,
             name='generate_footprint_features'
+        ),
+        node(
+            func=building_block_clustering,
+            inputs=['raw_plz_ags',
+                    'params:boundary_type',
+                    'params:pri_buildings_path',
+                    'params:fea_buildings_path'],
+            outputs=None,
+            name='building_block_clustering'
         )
     ], tags="buildings_classification_pipeline"
     )

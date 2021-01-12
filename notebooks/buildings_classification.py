@@ -1,13 +1,32 @@
 import pandas as pd
 import numpy as np
 from shapely import wkt
-
+import sys
+import os
+import re
 import logging
 from shapely.geometry import box, Polygon
 from geopandas import GeoDataFrame
 
 
 import hdbscan
+
+def generate_dist_data(dist_id, buildings_pri_path):
+    """Generate district-level building footprints dataframe"""
+    
+    regex = re.compile(f'(buildings_ags_{dist_id})')
+    # Create district building dataframe
+    li = []
+    for root, dirs, files in os.walk(buildings_pri_path):
+        for file in files:
+            if regex.match(file):
+                df = pd.read_csv(os.path.join(buildings_pri_path,file), 
+                                 index_col=None, header=0)
+                li.append(df)
+
+    dist_df = pd.concat(li, axis=0, ignore_index=True)
+    return dist_df
+
 
 def hdbscan_bld(buildings_df:pd.DataFrame, min_cluster_size:int, cluster_selection_epsilon:int, min_samples:int):
     """

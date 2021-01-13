@@ -6,6 +6,8 @@ raw_buildings_path: data/01_raw/buildings_data
 int_buildings_path : data/02_intermediate/buildings_data
 pri_buildings_path: data/03_primary/buildings_data
 fea_buildings_path: data/04_feature/buildings_data
+model_output_path: data/07_model_output/buildings_data
+
 rep_diff_result_path: data/08_reporting/residential_diff.csv
 
 # Germany state list

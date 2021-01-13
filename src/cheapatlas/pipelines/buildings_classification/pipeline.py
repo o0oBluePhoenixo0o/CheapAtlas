@@ -53,6 +53,15 @@ def create_pipeline(**kwargs):
                     'params:fea_buildings_path'],
             outputs=None,
             name='building_block_clustering'
+        ),
+        node(
+            func=building_types_classification,
+            inputs=['raw_plz_ags',
+                    'params:boundary_type',
+                    'params:fea_buildings_path',
+                    'params:model_output_path'],
+            outputs=None,
+            name='building_type_classification'
         )
     ], tags="buildings_classification_pipeline"
     )

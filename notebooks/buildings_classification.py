@@ -8,6 +8,10 @@ import logging
 from shapely.geometry import box, Polygon
 from geopandas import GeoDataFrame
 
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import accuracy_score
+from xgboost import XGBClassifier
 
 import hdbscan
 
@@ -174,3 +178,68 @@ def generate_stats_table(buildings_clust_df):
     stat_table = stat_table[stat_table.columns[[0,1,3,2,4,5]]]
     
     return stat_table
+
+
+def xgboost_classify_building(buildings_clust_df):
+    """
+    Classify building footprints into residential and non-residential. 
+    Merge results with existing naive classification (from data_preparation pipeline)
+    
+    Args:
+        buildings_clust_df: building footprints dataset for an area with building_block results from HDBSCAN
+    
+    """
+    
+    # Turn into a binary classification problem: residentials vs the rest
+    df = buildings_clust_df[buildings_clust_df.building_types != 'to_be_classified'][['building_types', # target variable
+                                                                                      'rectangularity',
+                                                                                      'surface_area',
+                                                                                      'building_block']]
+    
+    df['building_types'] = np.where(df.building_types != 'residential', 'non-residential','residential')
+    
+    # Factorize features
+    df.building_types = pd.factorize(df['building_types'])[0]
+    df.building_block = pd.factorize(df['building_block'])[0]
+    
+    # Splitting the data into independent and dependent variables
+    X = df[['rectangularity',
+           'surface_area',
+           'building_block',
+           ]].values
+
+    y = df[['building_types']].values
+
+    # Using Skicit-learn to split data into training and testing sets
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.25, random_state = 42)
+
+    # Feature Scaling
+    scaler = StandardScaler()
+    X_train = scaler.fit_transform(X_train)
+    X_test = scaler.transform(X_test)
+    
+    # Fit classifier
+    classifier = XGBClassifier(random_state = 42)
+    
+    # Get result from CV steps and apply 
+    classifier.fit(X_train, y_train)
+    y_pred = classifier.predict(X_test)
+    
+    logging.info(f'Accuracy: %.3f (%.3f) {accuracy_score(y_test, y_pred)}')
+    
+    ########################################
+    # Classify unknown footprints
+    classify_df = buildings_clust_df[buildings_clust_df.building_types == 'to_be_classified']
+    # Apply scaling
+    classify_scaled = scaler.transform(classify_df[['rectangularity','surface_area','building_block']])
+    yhat = classifier.predict(classify_scaled)
+    
+    classify_df = classify_df.assign(building_types_pred = yhat)[['id','building_types_pred']]
+    # Only take those classified as "residential"
+    classify_df = classify_df[classify_df.building_types_pred == 1]
+
+    # Get list of OSM_ID 
+    residential_list = list(classify_df.id)
+    buildings_clust_df['building_types'] = np.where(buildings_clust_df.id.isin(residential_list), 'residential', buildings_clust_df.building_types)
+    
+    return buildings_clust_df

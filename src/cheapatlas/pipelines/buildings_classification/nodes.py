@@ -44,6 +44,12 @@ log = logging.getLogger(__name__)
 
 from src.cheapatlas.commons.helpers import _left
 
+# Classify building types
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import accuracy_score
+from xgboost import XGBClassifier
+
 import warnings
 # Disable depreciation warning
 warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -165,6 +171,14 @@ def building_block_clustering(plz_ags:pd.DataFrame,
     # Group to get only district-level ==> ~ 400 districts
     plz_ags_dist = plz_ags.groupby('ags_district').size().to_frame('count').reset_index()
 
+    # Check for progress of already done areas
+    name_list = os.listdir(fea_buildings_path)
+    id_list = [x.split('.')[0].split('_')[2] for x in name_list if 'buildings' in x]
+
+    # Get list of AGS codes
+    plz_ags_dist = plz_ags['ags_district']
+    plz_ags_dist = pd.DataFrame(np.setdiff1d(plz_ags_dist, id_list), columns=['ags_district'])
+
     # Iterate through list of district and perform clustering on each of them
     for idx, dist_id in enumerate(plz_ags_dist.ags_district):
         try:
@@ -197,7 +211,8 @@ def generate_dist_data(dist_id, buildings_pri_path):
         for file in files:
             if regex.match(file):
                 df = pd.read_csv(os.path.join(buildings_pri_path, file),
-                                 index_col=None, header=0)
+                                 index_col=None, header=0,
+                                 low_memory = False)
                 li.append(df)
 
     dist_df = pd.concat(li, axis=0, ignore_index=True)
@@ -238,14 +253,120 @@ def hdbscan_bld(buildings_df: pd.DataFrame, min_cluster_size: int, cluster_selec
     return buildings_clust_df
 
 # 3rd node
-def building_types_classification()
+def building_types_classification(plz_ags:pd.DataFrame,
+                                  boundary_type:str,
+                                  fea_buildings_path:str,
+                                  model_output_path:str):
     """
     Classify building footprints into residential and non-residential. 
     Merge results with existing naive classification (from data_preparation pipeline)
     
     Args:
+        plz_ags: list of municipalities in Germany
+        boundary_type: PLZ or AGS code
         fea_buildings_path: inputs from 04_feature
         model_output_path: outputs to 07_model_output
-        
-    
     """
+
+    # create saving location folder if not exists
+    if not os.path.exists(model_output_path):
+        os.makedirs(model_output_path)
+
+    # Generate list of districts
+    plz_ags['ags_district'] = plz_ags[boundary_type].apply(lambda x: _left(x, 5))
+    # Group to get only district-level ==> ~ 400 districts
+    plz_ags_dist = plz_ags.groupby('ags_district').size().to_frame('count').reset_index()
+
+    # Check for progress of already done areas
+    name_list = os.listdir(model_output_path)
+    id_list = [x.split('.')[0].split('_')[2] for x in name_list if 'buildings' in x]
+
+    # Get list of AGS codes
+    plz_ags_dist = plz_ags['ags_district']
+    plz_ags_dist = pd.DataFrame(np.setdiff1d(plz_ags_dist, id_list), columns=['ags_district'])
+    # Iterate through list of district and perform clustering on each of them
+    for idx, dist_id in enumerate(plz_ags_dist.ags_district):
+        try:
+            logging.info(f'Classifying footprints for district {dist_id} at position {idx + 1}/{len(plz_ags_dist) + 1}')
+            buildings_clust_df = pd.read_csv(os.path.join(fea_buildings_path,f'buildings_ags_{dist_id}.csv'),
+                                             low_memory=False)
+            classified_buildings_clust_df = xgboost_classify_building(buildings_clust_df)
+
+            # Save result
+            classified_buildings_clust_df.to_csv(f'{model_output_path}/buildings_{boundary_type}_{dist_id}.csv', index=False)
+        except Exception as e:
+            logging.warning(
+                f'Cannot classifying footprints in district {dist_id} at position {idx + 1}/{len(plz_ags_dist) + 1}. Error: {e}')
+
+
+def xgboost_classify_building(buildings_clust_df):
+    """
+    Classify building footprints into residential and non-residential.
+    Merge results with existing naive classification (from data_preparation pipeline)
+
+    Args:
+        buildings_clust_df: building footprints dataset for an area with building_block results from HDBSCAN
+
+    """
+
+    # Turn into a binary classification problem: residential vs the rest
+    df = buildings_clust_df[buildings_clust_df.building_types != 'to_be_classified'][
+        ['building_types',  # target variable
+         'rectangularity',
+         'surface_area',
+         'building_block'
+         ]]
+
+    df['building_types'] = np.where(df.building_types != 'residential', 'non-residential', 'residential')
+
+    # Factorize features
+    df.building_types = pd.factorize(df['building_types'])[0]
+    df.building_block = pd.factorize(df['building_block'])[0]
+
+    # Splitting the data into independent and dependent variables
+    X = df[['rectangularity',
+            'surface_area',
+            'building_block',
+            ]].values
+
+    y = df[['building_types']].values
+
+    # Using Skicit-learn to split data into training and testing sets
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)
+
+    # Feature Scaling
+    scaler = StandardScaler()
+    X_train = scaler.fit_transform(X_train)
+    X_test = scaler.transform(X_test)
+
+    # Fit classifier
+    classifier = XGBClassifier(eval_metric='logloss',
+                               use_label_encoder=False,
+                               random_state=42)
+
+    # Get result from CV steps and apply
+    classifier.fit(X_train, y_train)
+    y_pred = classifier.predict(X_test)
+
+    logging.info(f'Accuracy: {round(accuracy_score(y_test, y_pred)*100,2)}%')
+
+    ########################################
+    # Classify unknown footprints
+    classify_df = buildings_clust_df[buildings_clust_df.building_types == 'to_be_classified']
+    # Apply scaling
+    classify_scaled = scaler.transform(classify_df[['rectangularity',
+                                                    'surface_area',
+                                                    'building_block'
+                                                    ]])
+    yhat = classifier.predict(classify_scaled)
+
+    classify_df = classify_df.assign(building_types_pred=yhat)[['id', 'building_types_pred']]
+    # Only take those classified as "residential"
+    classify_df = classify_df[classify_df.building_types_pred == 1]
+
+    # Get list of OSM_ID
+    residential_list = list(classify_df.id)
+    buildings_clust_df['building_types'] = np.where(buildings_clust_df.id.isin(residential_list), 'residential',
+                                                    buildings_clust_df.building_types)
+
+    return buildings_clust_df

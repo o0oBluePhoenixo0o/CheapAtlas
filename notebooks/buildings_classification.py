@@ -32,39 +32,7 @@ def generate_dist_data(dist_id, buildings_pri_path):
     return dist_df
 
 
-def hdbscan_bld(buildings_df:pd.DataFrame, min_cluster_size:int, cluster_selection_epsilon:int, min_samples:int):
-    """
-    Take in building objects dataframe with coordinates (lat + lon) and perform HDBSCAN to group buildings into blocks
-    
-    Args:
-        buildings_df: dataframe of building objects (osmid, coordinates, geometry, building_types - naive classification)
-        min_cluster_size: minimum number of footprints to be considered as a "block"
-        cluster_selection_epsilon: ensure cluster distance smaller than this threshold will not be split further (in meters 10^-4)
-        min_samples: the larger the value, the more conservative split ==> have more noises
-    Results:
-        buildings_clust_df: with additional column as cluster id
-    """
-    # Setting up coordinate matrix
-    coord_mat = np.array(buildings_df[['center.lat','center.lon']])
-    rads = np.radians(coord_mat)
 
-    clusterer = hdbscan.HDBSCAN(min_cluster_size=min_cluster_size,
-                                metric='haversine', # haversine distance on earth surface
-                                cluster_selection_epsilon = cluster_selection_epsilon,
-                                min_samples = min_samples
-                               )
-    # Apply to get cluster id
-    cluster_labels = clusterer.fit_predict(coord_mat)
-    cluster_res = pd.DataFrame(cluster_labels, columns = {'building_block'})
-    
-    # Logging info
-    total_blks = cluster_res.groupby('building_block').size().shape[0]
-    logging.info(f'Generate total of {total_blks} building blocks in the area.')
-    
-    buildings_clust_df = buildings_df.join(cluster_res)
-    buildings_clust_df['building_block'] = buildings_clust_df['building_block'].astype(str)
-    
-    return buildings_clust_df
 
 def plot_buildings_area(buildings_clust_df, plot_type, legend_ncol):
     """
@@ -243,3 +211,5 @@ def xgboost_classify_building(buildings_clust_df):
     buildings_clust_df['building_types'] = np.where(buildings_clust_df.id.isin(residential_list), 'residential', buildings_clust_df.building_types)
     
     return buildings_clust_df
+
+

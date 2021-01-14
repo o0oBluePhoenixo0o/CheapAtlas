@@ -14,10 +14,13 @@ pandas
 jupyterlab
 
 # GIS
-geopandas
-pyrosm
+# geopandas
+# pyrosm
 
 # Visualization
 python-igraph
 matplotlib
 seaborn
+
+# Machine learning
+xgboost
